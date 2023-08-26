@@ -1,0 +1,10 @@
+RoutePage()
+class CareGiverDetailPage extends StatefulWidget {
+  const CareGiverDetailPage({
+    Key? key,
+    @QueryParam('id') this.id = '',
+  }) : super(key: key);
+
+  final String? id;
+
+ userId = autoTabRouter?.currentChild?.queryParams.getString('id', '') ?? "";
