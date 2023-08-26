@@ -1,0 +1,137 @@
+///model class
+
+class TimeModel {
+  int? hours;
+  int? minutes;
+  int? seconds;
+
+  TimeModel({this.hours = 00, this.minutes = 00, this.seconds = 00});
+
+  Map toJson() => {
+        'hours': hours,
+        'minutes': minutes,
+        'seconds': seconds,
+      };
+}
+
+/// from controller
+
+TimeModel timerModel = TimeModel(seconds: 10);
+ final cartCount = 0.obs;
+ Timer? _timer;
+ bool timerWorking = true;
+ bool isAboutToEnd = false;
+
+CartItem? itemToDelete = null;
+bool itemAlreadyDeleted = false;
+
+/// initial calling
+
+ getData(String from) {
+    print('Call() from Fun $from');
+
+    isLoading(true);
+    try {
+      cartList.clear();
+      _myCartProvider.getMyCart().then((value) {
+        if (value != null) {
+          cartTotal.value = (value.result!.totalAmount) ?? "0";
+          cartList.addAll(value.result!.cartItems!);
+          cartCount.value = cartList.length;
+          update();
+          stopTimer();
+          if (cartList.isNotEmpty) {
+            startTimer();
+          }
+        } else {
+          update();
+        }
+        isLoading(false);
+      }).onError((error, stackTrace) {
+        print("error: " + error.toString());
+        print("stackTrace: " + stackTrace.toString());
+        isLoading(false);
+        update();
+        CustomSnackBar.showErrorSnackBar(
+            LocaleKeys.title_error.tr, LocaleKeys.error_someThingWentWrong.tr,
+            className: _className, pageNumber: 101);
+      });
+    } catch (error) {
+      isLoading(false);
+      update();
+      CustomSnackBar.showErrorSnackBar(
+          LocaleKeys.title_error.tr, LocaleKeys.error_someThingWentWrong.tr,
+          className: _className, pageNumber: 112);
+    }
+  }
+
+
+/// Timer funcions
+
+void startTimer() {
+    _timer = new Timer.periodic(const Duration(seconds: 1), (Timer timer) {
+      if (timerWorking == false) {
+        timer.cancel();
+      } else {
+        for (CartItem element in cartList) {
+          if (element.timerModel.value.seconds != null &&
+              element.timerModel.value.seconds! > 0) {
+            element.timerModel.value.seconds =
+                element.timerModel.value.seconds! - 1;
+          } else if (element.timerModel.value.seconds != null &&
+              element.timerModel.value.minutes! > 0) {
+            element.timerModel.value.minutes =
+                element.timerModel.value.minutes! - 1;
+            if (element.timerModel.value.minutes! < 2) {
+              isAboutToEnd = true;
+            } else {
+              isAboutToEnd = false;
+            }
+
+            element.timerModel.value.seconds = 59;
+          } else {
+            element.timerModel.value.seconds = 00;
+            element.timerModel.value.minutes = 00;
+            itemToDelete = element;
+            cartList.remove(itemToDelete);
+            // itemToDelete = null;
+            cartCount.value = cartCount.value - 1;
+            getData("isExpire");
+            break;
+          }
+          element.expiresIn.value =
+              '${element.timerModel.value.minutes.toString().padLeft(2, '0')}:${element.timerModel.value.seconds.toString().padLeft(2, '0')}';
+          update();
+        }
+      }
+    });
+  }
+
+  void stopTimer() {
+    if (_timer != null) _timer!.cancel();
+  }
+
+
+/// json setup
+
+class CartItem {
+  int? cartId;
+  int? profileId;
+  late Rx<TimeModel> timerModel;
+
+  CartItem();
+
+  CartItem.fromJson(Map<String, dynamic> json) {
+    expiresIn.value = json['expires_in'] ?? "5";
+
+    var split = expiresIn.toString().split(':');
+    int min = 0;
+    int sec = 0;
+    if (split.isNotEmpty) {
+      min = int.parse(split[0]);
+      sec = int.parse(split[1]);
+    }
+    timerModel = new TimeModel(minutes: min, seconds: sec).obs;
+  }
+
+}

@@ -1,0 +1,178 @@
+///in order to work payfort sdk have to add progurad-rules file inside app folder
+
+/// also modify build.gradle file
+
+   buildTypes {
+        release {
+            signingConfig signingConfigs.release
+//            signingConfig signingConfigs.debug
+            minifyEnabled true
+            shrinkResources true
+            proguardFile getDefaultProguardFile('proguard-android.txt')
+            proguardFile 'proguard-rules.pro'
+        }
+
+    }
+
+/// there is two methods for that create signature and add  keys from front end side
+   or sett from backend side
+
+*backend side (recommended):
+
+*creating signature : for that we have to pass deviceID in api(rest of keys they can add) and they will genarate signature (well in this app we pass device id on confirm order api)
+
+*after we have to call another api that will includes payment keys also get bool of it's production or test
+
+  requestAmazonPay() async {
+    print('isProduction $isProduction');
+    isLoading(true);
+    try {
+      print("try");
+      print("EnvironmentType.sandbox ${EnvironmentType.sandbox}");
+
+      String ip;
+      String fortId;
+      String paymentResponseCode;
+      String paymentResponseMsg;
+      String status;
+      String tokenName;
+      String cardHolderName;
+
+      PayfortPlugin.getID.then((deviceID) => {
+            //use this deviceID to  send it to your server to get YOR_MERCHANT_REF and YOUR_SDK_TOKEN
+            PayfortPlugin.performPaymentRequest(
+                    '$merchantReference',
+                    '$sdkToken',
+                    '${AppStorageKeys().readUserFullName().toString()}',
+                    '$language',
+                    '$email',
+                    '$amount',
+                    'PURCHASE',
+                    '$currency',
+                    isProduction!
+                        ? '1'
+                        : '0' // 0 for test mode and 1 for production
+                    )
+                .then((result) {
+              return {
+                print('result..$result'),
+                if (result?['response_message'] == 'Success')
+                  {
+                    email = "${result?['customer_email']}",
+                    merchantReference = "${result?['merchant_reference']}",
+                    ip = "${result?['customer_ip']}",
+                    fortId = "${result?['fort_id']}",
+                    paymentResponseCode = "${result?['response_code']}",
+                    paymentResponseMsg = "${result?['response_message']}",
+                    status = "${result?['status']}",
+                    tokenName = "${result?['sdk_token']}",
+                    cardHolderName = "${result?['card_holder_name']}",
+                    print(
+                        " email $email, merchantReference $merchantReference, ip $ip, fortId $fortId, "
+                        "paymentResponseCode $paymentResponseCode, paymentResponseMsg $paymentResponseMsg, "
+                        "status $status, tokenName $tokenName, cardHolderName $cardHolderName"),
+                    paymentParam = PaymentParam(
+                        customerEmail: email,
+                        merchantReference: merchantReference,
+                        customerPaymentIp: ip,
+                        fortId: fortId,
+                        paymentResponseCode: paymentResponseCode,
+                        paymentResponseMessage: paymentResponseMsg,
+                        paymentStatusReturn: status,
+                        tokenName: tokenName,
+                        cardHolderName: cardHolderName),
+                    isLoading(false),
+                    updatePaymentToServer(),
+                    print('reached if'),
+                    navigateToHomePage()
+                  }
+                else
+                  {print('reached else'), navigateToHomePage()}
+              };
+            })
+          });
+    } on PlatformException catch (e) {
+      print('exception is $e');
+      navigateToHomePage();
+      return;
+    }
+  }
+
+* in this method pass respective keys and also another api to update payment status to server
+
+
+
+frontend side:
+
+*create signature by giving respecyive keys
+
+ Future<Response> getPaymentToken(
+      {required bool isPaymentTest,
+      required String language,
+      required String requestPhase,
+      required String responsePhase,
+      required String accessCode,
+      required String deviceId,
+      required String merchantId,
+      required String amount,
+      required String currency,
+      required String email}) async {
+    dio.options.headers['Content-Type'] = "application/json";
+    var data = {
+      "service_command": "SDK_TOKEN",
+      "access_code": "$accessCode",
+      "merchant_identifier": "$merchantId",
+      "language": language,
+      "device_id": deviceId,
+      "signature": getSignature(
+          'SDK_TOKEN',
+          language,
+          requestPhase,
+          responsePhase,
+          accessCode,
+          deviceId,
+          merchantId,
+          amount,
+          currency,
+          email)
+    };
+
+    String url = "";
+    if (isPaymentTest) {
+      url = "https://sbpaymentservices.payfort.com/FortAPI/paymentApi";
+    } else {
+      url = "https://checkout.payfort.com/FortAPI/paymentPage";
+    }
+    final response = await dio.post(
+      url,
+      data: data,
+      options: Options(
+          followRedirects: false,
+          validateStatus: (status) {
+            return status! < 500;
+          }),
+    );
+    dev.log('data $url $data');
+    return response;
+  }
+
+  String getSignature(
+    String command,
+    String language,
+    String requestPhrase,
+    String responsePhrase,
+    String accessCode,
+    String deviceId,
+    String merchantId,
+    String amount,
+    String currency,
+    String email,
+  ) {
+    String concatenated =
+        "${requestPhrase}access_code=${accessCode}device_id=${deviceId}language=${language}merchant_identifier=${merchantId}service_command=SDK_TOKEN$requestPhrase";
+    Digest sha256Result = sha256.convert(utf8.encode(concatenated));
+    dev.log('sha256Result $sha256Result');
+    dev.log('signature $concatenated');
+    return '$sha256Result';
+  }
+

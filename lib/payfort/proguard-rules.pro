@@ -1,0 +1,3 @@
+-keep class com.amazon.** {*;}
+-keep interface com.payfort.fortpaymentsdk.** {*;}
+-keep class com.payfort.fortpaymentsdk.** {*;}

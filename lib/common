@@ -1,0 +1,26 @@
+
+
+Change Package:
+
+flutter pub run change_app_package_name:main com.qa.qaccess
+
+FVM:
+dart pub global activate fvm
+fvm list
+if haven't any list
+fvm releases
+fvm install version
+fvm use version name
+cd .fvm
+cd flutter_sdk
+pwd
+
+JKS:
+keytool -genkey -v -keystore D:\Shabeer\Projects\flutter\AlhaddadDeliveryApp\kube_driver.jks -storetype JKS -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+
+Build runner:
+flutter pub run build_runner watch --delete-conflicting-outputs
+
+
+
+

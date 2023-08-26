@@ -1,0 +1,732 @@
+
+///Functionality
+
+class FilterController extends GetxController {
+  final ApiServices _mApiService = ApiServices();
+  final mIsLoading = true.obs;
+
+  /// used to display FilterView
+  final RxList<Filter> mFilters = <Filter>[].obs;
+
+  /// used to store filter and filter selected options
+  List<FiltersModel> mSelectedOptions = [];
+
+  /// used to store applied filter option values
+  List<int> mStoredAppliedOption = [];
+
+  /// to show a filter option list based on the filter
+  RxInt mSelectedParent = 0.obs;
+
+  /// to display price range
+  Rx<RangeValues> mRange = const RangeValues(0.0, 1.0).obs;
+
+  /// to know if the price range is changed
+  RxBool mIsChangedSlider = false.obs;
+
+  /// to get price range from api
+  PriceRange? mAvailablePriceRange;
+
+  /// to get price range if we already added in filter
+  PriceRange? mStoredAvailablePriceRange;
+
+  /// applied filter items setting to to list after it'll set to appliedFilterMap
+  List<FilterParams> filterParams = [];
+
+  /// applied filter items passing to api as map
+  Map<String, dynamic> appliedFilterMap = {};
+
+  /// to know if filter is applied
+  bool isAppliedFilter = false;
+
+  /// initial call ,  checking different conditions
+  getFilters(int categoryId) {
+    mIsLoading(true);
+    _mApiService.getFilter(categoryId).then((response) {
+      FilterResponse? filterResponse = response.data;
+      if (response.getException != null) {
+        ServerError errorResponse = response.getException;
+        CommonUtils.toast(errorResponse.getErrorMessage());
+        mIsLoading(false);
+      }
+      isAppliedFilterOption();
+      appliedFilterOptions();
+      displayFilterView(filterResponse);
+      displayPriceRange();
+      mIsLoading(false);
+    });
+  }
+
+  /// for displaying price range, also if already applied price range filter it'll take mStoredAvailablePriceRange
+  /// else it'll take mAvailablePriceRange from api
+  displayPriceRange() {
+    if (mStoredAvailablePriceRange != null) {
+      mRange.value = RangeValues(mStoredAvailablePriceRange?.start ?? 0.0,
+          mStoredAvailablePriceRange?.end ?? 1.0);
+      mFilters[0].isShowDotIndicator.value = true;
+    } else {
+      if (mFilters.isNotEmpty && mFilters[0].filterOptionList!.isNotEmpty) {
+        mAvailablePriceRange = PriceRange();
+        mAvailablePriceRange?.start =
+            double.parse(mFilters[0].filterOptionList![0].minPrice ?? "0");
+        mAvailablePriceRange?.end =
+            double.parse(mFilters[0].filterOptionList![0].maxPrice ?? "1");
+        mRange.value = RangeValues(mAvailablePriceRange?.start ?? 0.0,
+            mAvailablePriceRange?.end ?? 1.0);
+        mFilters[0].isShowDotIndicator.value = false;
+      }
+    }
+  }
+
+  /// for displaying filter view
+  displayFilterView(FilterResponse? filterResponse) {
+    mFilters.clear();
+    mFilters.addAll(filterResponse?.filter ?? []);
+    for (var selectedFilterOption in mSelectedOptions) {
+      for (var filterItem in mFilters) {
+        if (selectedFilterOption.filterId == filterItem.filterId) {
+          for (var filterSubItem in filterItem.filterOptionList!) {
+            if (selectedFilterOption.filterOptionIdList!
+                .contains(filterSubItem.filterOptionId)) {
+              filterSubItem.isFilterOptionSelected.value = true;
+              filterItem.isShowDotIndicator.value = true;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  /// adding filter applied option list to filter selected option list
+  appliedFilterOptions() {
+    for (int i = 0; i < mStoredAppliedOption.length; i++) {
+      for (int j = 0; j < mSelectedOptions.length; j++) {
+        var item = mSelectedOptions[j];
+        item.filterOptionIdList?.add(mStoredAppliedOption[i]);
+      }
+    }
+    if (kDebugMode) {
+      print('mTemp ${json.encode(mSelectedOptions)}');
+    }
+  }
+
+  /// to know whether filter applied/not
+  isAppliedFilterOption() {
+    if (mStoredAppliedOption.isNotEmpty) {
+      isAppliedFilter = true;
+    } else {
+      isAppliedFilter = false;
+    }
+  }
+
+  /// reset price range
+  resetPrice() {
+    mIsChangedSlider(false);
+    mStoredAvailablePriceRange = null;
+    mRange.value = RangeValues(
+        mAvailablePriceRange?.start ?? 0.0, mAvailablePriceRange?.end ?? 1.0);
+  }
+
+  /// clearing filter values
+  clearFilter() {
+    isAppliedFilter = true;
+    resetPrice();
+    filterParams.clear();
+    appliedFilterMap = {};
+    mSelectedOptions.clear();
+    mStoredAppliedOption.clear();
+    for (var filter in mFilters) {
+      filter.isShowDotIndicator.value = false;
+
+      for (var filterSubItem in filter.filterOptionList!) {
+        filterSubItem.isFilterOptionSelected.value = false;
+      }
+    }
+    mSelectedParent.value = 0;
+  }
+
+  /// applying filter and set to api param
+  applyFilter() {
+    resetFilterValues();
+    setPriceRange();
+    setSelectedFilterOption();
+    clearSelectedOptionList();
+    Get.back(result: isAppliedFilter);
+  }
+
+  resetFilterValues() {
+    mStoredAppliedOption.clear();
+    filterParams.clear();
+    appliedFilterMap = {};
+  }
+
+  /// handling on back press
+  onBackPressed() {
+    clearSelectedOptionList();
+    Get.back(result: isAppliedFilter);
+  }
+
+  /// selected filter option set to api also storing selected options to mStoredAppliedOption
+  setSelectedFilterOption() {
+    for (int i = 0; i < mSelectedOptions.length; i++) {
+      var item = mSelectedOptions[i];
+      for (int j = 0; j < item.filterOptionIdList!.length; j++) {
+        var filterOption = item.filterOptionIdList![j];
+        mStoredAppliedOption.add(filterOption ?? 0);
+        int index = j + 1;
+        filterParams.add(FilterParams(
+            key: "searchCriteria[filterGroups][$index][filters][0][field]",
+            value: "course_type"));
+        filterParams.add(FilterParams(
+            key:
+                "searchCriteria[filterGroups][$index][filters][0][conditionType]",
+            value: "eq"));
+        filterParams.add(FilterParams(
+            key: "searchCriteria[filterGroups][$index][filters][0][value]",
+            value: filterOption.toString()));
+      }
+    }
+    filterParams
+        .forEach((filter) => appliedFilterMap[filter.key ?? ""] = filter.value);
+
+    /// checking two conditions -first checking api params list is not empty
+    /// second - if already applied filter and uncheck values and again press apply filter button
+    if (filterParams.isNotEmpty || isAppliedFilter) {
+      isAppliedFilter = true;
+    } else {
+      isAppliedFilter = false;
+    }
+
+    if (kDebugMode) {
+      print('selected price range == ${mIsChangedSlider.value}');
+      print('selected option == ${json.encode(mSelectedOptions)}');
+    }
+  }
+
+  ///price range set to api
+  setPriceRange() {
+    if (mIsChangedSlider.value) {
+      mStoredAvailablePriceRange = PriceRange();
+      mStoredAvailablePriceRange?.start = mRange.value.start;
+      mStoredAvailablePriceRange?.end = mRange.value.end;
+      filterParams.add(FilterParams(
+          key: "searchCriteria[filter_groups][2][filters][0][field]",
+          value: "price"));
+      filterParams.add(FilterParams(
+          key: "searchCriteria[filter_groups][2][filters][0][condition_type]",
+          value: "from"));
+      filterParams.add(FilterParams(
+          key: "searchCriteria[filter_groups][2][filters][0][value]",
+          value: mStoredAvailablePriceRange?.start.toString()));
+      filterParams.add(FilterParams(
+          key: "searchCriteria[filter_groups][3][filters][0][field]",
+          value: "price"));
+      filterParams.add(FilterParams(
+          key: "searchCriteria[filter_groups][3][filters][0][condition_type]",
+          value: "to"));
+      filterParams.add(FilterParams(
+          key: "searchCriteria[filter_groups][3][filters][0][value]",
+          value: mStoredAvailablePriceRange?.end.toString()));
+    } else {
+      mStoredAvailablePriceRange = null;
+    }
+  }
+
+  /// clearing filter option list and keeping filter options to mStoredAppliedOption list
+  clearSelectedOptionList() {
+    for (var element in mSelectedOptions) {
+      element.filterOptionIdList?.clear();
+    }
+  }
+
+  onChangePriceRange(value) {
+    mRange.value = value;
+    Filter filter = mFilters[mSelectedParent.value];
+    checkRangeValue();
+    onPriceItemSelected(filter);
+  }
+
+  /// mIsChangedSlider will be if the price range is change otherwise it'll be false
+  checkRangeValue() {
+    if ((mRange.value.start == mAvailablePriceRange?.start) &&
+        (mRange.value.end == mAvailablePriceRange?.end)) {
+      mIsChangedSlider.value = false;
+    } else {
+      mIsChangedSlider.value = true;
+    }
+  }
+
+  /// showing dot indicator if the price range is change
+  bool onPriceItemSelected(Filter filter) {
+    if (mIsChangedSlider.value) {
+      return filter.isShowDotIndicator.value = true;
+    } else {
+      return filter.isShowDotIndicator.value = false;
+    }
+  }
+
+  /// handling filter option tap and add/remove in mSelectedOptions
+  onFilterOptionTap({required FilterOptionList filterOption}) {
+    filterOption.isFilterOptionSelected.value =
+        !filterOption.isFilterOptionSelected.value;
+    if (kDebugMode) {
+      print('isChecked value ${filterOption.isFilterOptionSelected.value}');
+    }
+    Filter actualFilter = mFilters[mSelectedParent.value];
+    int filterParentId = actualFilter.filterId ?? 0;
+    bool isContainsFilterParentId = false;
+
+    if (mSelectedOptions.isEmpty) {
+      mSelectedOptions.add(FiltersModel(
+          filterId: filterParentId,
+          filterOptionIdList: [filterOption.filterOptionId!]));
+      if (kDebugMode) {
+        print(
+            'check - filter model if  ${json.encode(mSelectedOptions)} and $filterParentId ');
+      }
+    } else {
+      for (var filterModel in mSelectedOptions) {
+        if (filterModel.filterId == filterParentId) {
+          isContainsFilterParentId = true;
+
+          if (!filterModel.filterOptionIdList!
+              .contains(filterOption.filterOptionId)) {
+            filterModel.filterOptionIdList?.add(filterOption.filterOptionId!);
+          } else {
+            filterModel.filterOptionIdList
+                ?.remove(filterOption.filterOptionId!);
+          }
+        }
+      }
+      if (kDebugMode) {
+        print(
+            'check else- filter model ${json.encode(mSelectedOptions)} and $filterParentId ');
+      }
+      if (isContainsFilterParentId == false) {
+        mSelectedOptions.add(FiltersModel(
+            filterId: filterParentId,
+            filterOptionIdList: [filterOption.filterOptionId!]));
+      }
+    }
+    setFilterOptionSelected(actualFilter, filterParentId);
+  }
+
+  /// showing dot indicator if the filter option is selected
+  void setFilterOptionSelected(Filter filter, int filterParentId) {
+    for (var selectedFilterOptions in mSelectedOptions) {
+      for (var filterItem in mFilters) {
+        if (filterItem.filterId == selectedFilterOptions.filterId) {
+          if (selectedFilterOptions.filterOptionIdList!.isEmpty) {
+            filterItem.isShowDotIndicator.value = false;
+          } else {
+            filterItem.isShowDotIndicator.value = true;
+          }
+        }
+      }
+    }
+  }
+}
+
+
+
+
+
+/// UI
+
+
+class FilterView extends StatefulWidget {
+  const FilterView({Key? key}) : super(key: key);
+
+  @override
+  State<FilterView> createState() => _FilterViewState();
+}
+
+class _FilterViewState extends State<FilterView> {
+  FilterController filterController = Get.find();
+  int categoryId = Get.arguments ?? 0;
+
+  @override
+  void initState() {
+    super.initState();
+    filterController.getFilters(categoryId);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: customAppBar(),
+      body: safeArea(),
+    );
+  }
+
+  SafeArea safeArea() {
+    return SafeArea(
+      child: Obx(() => LoadingWidget(
+          isLoading: filterController.mIsLoading.value,
+          child: _buildBodyView())),
+    );
+  }
+
+  CustomAppBar customAppBar() {
+    return CustomAppBar(
+      isHasTitle: true,
+      centerTitle: false,
+      fontSize: 18,
+      text: LocaleKeys.filters.tr,
+      isHasClear: filterController.mFilters.isNotEmpty,
+      onClearPressed: () {
+        filterController.clearFilter();
+      },
+      onBackPress: () {
+        filterController.onBackPressed();
+      },
+    );
+  }
+
+  Widget _buildBodyView() {
+    return WillPopScope(
+      onWillPop: () async {
+        filterController.onBackPressed();
+        return true;
+      },
+      child: filterController.mFilters.isNotEmpty
+          ? Stack(
+              children: [
+                Row(
+                  children: [
+                    filterView(),
+                    filterOptionView(),
+                  ],
+                ),
+                ApplyButton(
+                  filterController: filterController,
+                )
+              ],
+            )
+          : !filterController.mIsLoading.value
+              ? const NoDataAvailable()
+              : const SizedBox.shrink(),
+    );
+  }
+
+  Expanded filterOptionView() {
+    return Expanded(
+        flex: 5,
+        child: Obx(() => Container(
+              color: Colors.white,
+              child: filterController
+                      .mFilters[filterController.mSelectedParent.value]
+                      .filterOptionList!
+                      .isNotEmpty
+                  ? ListView.builder(
+                      padding: const EdgeInsets.only(bottom: 60),
+                      itemBuilder: (context, i) {
+                        return filterController.mSelectedParent.value == 0
+                            ? PriceRangeViewItem(
+                                filterController: filterController,
+                                filterOption: filterController
+                                    .mFilters[
+                                        filterController.mSelectedParent.value]
+                                    .filterOptionList![0])
+                            : FilterOptionViewItem(
+                                filterController: filterController,
+                                filterOption: filterController
+                                    .mFilters[
+                                        filterController.mSelectedParent.value]
+                                    .filterOptionList![i]);
+                      },
+                      itemCount: filterController
+                          .mFilters[filterController.mSelectedParent.value]
+                          .filterOptionList!
+                          .length,
+                    )
+                  : const NoDataAvailable(),
+            )));
+  }
+
+  Expanded filterView() {
+    return Expanded(
+      flex: 4,
+      child: Obx(() => Container(
+            color: Colors.grey[100],
+            child: ListView.builder(
+              itemBuilder: (context, index) {
+                return Obx(() => filterViewItem(index));
+              },
+              itemCount: filterController.mFilters.length,
+            ),
+          )),
+    );
+  }
+
+  Widget filterViewItem(int index) {
+    if (kDebugMode) {
+      print(
+          'DotIndicator ${filterController.mFilters[index].isShowDotIndicator.value}');
+    }
+    return Container(
+        padding: const EdgeInsets.only(left: 16, right: 16),
+        color: filterController.mSelectedParent.value == index
+            ? Colors.white
+            : Colors.grey[100],
+        child: Obx(
+          () => ListTile(
+            trailing: filterController.mFilters[index].isShowDotIndicator.value
+                ? const DotIndicator()
+                : const SizedBox(),
+            contentPadding: EdgeInsets.zero,
+            onTap: () {
+              filterController.mSelectedParent.value = index;
+            },
+            title: Text(filterController.mFilters[index].title ?? ''),
+          ),
+        ));
+  }
+}
+
+
+///Widgets
+
+
+class FilterOptionViewItem extends StatelessWidget {
+  const FilterOptionViewItem(
+      {Key? key,
+      required this.filterController,
+      required this.filterOption})
+      : super(key: key);
+  final FilterController filterController;
+  final FilterOptionList filterOption;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Obx(
+        () => CustomCheckBox(
+          isChecked: filterOption.isFilterOptionSelected.value,
+          onTap: () {
+            filterController.onFilterOptionTap(filterOption: filterOption);
+          },
+        ),
+      ),
+      title: Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: Text(filterOption.title!)),
+      horizontalTitleGap: 0,
+    );
+  }
+
+
+}
+
+
+
+
+
+class PriceRangeViewItem extends StatelessWidget {
+  const PriceRangeViewItem({
+    Key? key,
+    required this.filterController,
+    required this.filterOption,
+  }) : super(key: key);
+
+  final FilterController filterController;
+  final FilterOptionList filterOption;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 10),
+      child: Column(
+        children: [
+          rangeSlider(filterOption, context),
+          Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+              child: Obx(
+                () => Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(CustomDoubleExtension(
+                            filterController.mRange.value.start)
+                        .roundDecimal(0)),
+                    Text(
+                        CustomDoubleExtension(filterController.mRange.value.end)
+                            .roundDecimal(0)),
+                  ],
+                ),
+              ))
+        ],
+      ),
+    );
+  }
+
+  rangeSlider(FilterOptionList filterOption, BuildContext context) {
+    return SliderTheme(
+      data: SliderTheme.of(context).copyWith(
+        // trackHeight: 12,
+        overlayColor: Colors.transparent,
+        valueIndicatorColor: AppColor.primaryColor,
+        // thumbShape: RoundSliderThumbShape(enabledThumbRadius: 20)
+        // overlayShape: RoundSliderOverlayShape(overlayRadius: 8)
+      ),
+      child: Obx(() => buildRangeSlider(filterOption)),
+    );
+  }
+
+  buildRangeSlider(FilterOptionList filterOption) {
+    if (kDebugMode) {
+      print('values are ${filterOption.minPrice} -  ${filterOption.maxPrice} ');
+    }
+    return RangeSlider(
+        activeColor: AppColor.primaryColor,
+        values: filterController.mRange.value,
+        labels: RangeLabels(
+            CustomDoubleExtension(filterController.mRange.value.start)
+                .roundDecimal(0),
+            CustomDoubleExtension(filterController.mRange.value.end)
+                .roundDecimal(0)),
+        min: filterOption.minPrice != null
+            ? double.parse(filterOption.minPrice ?? "0")
+            : 0.0,
+        max: filterOption.maxPrice != null
+            ? double.parse(filterOption.maxPrice ?? "1.0")
+            : 1.0,
+        divisions: 5,
+        onChanged: (value) {
+        filterController.onChangePriceRange(value);
+        });
+  }
+
+}
+
+
+//model class
+
+import 'package:flutter/foundation.dart';
+import 'package:get/get.dart';
+
+class FilterResponse {
+  String? message;
+  List<Filter>? filter;
+
+  FilterResponse({this.message, this.filter});
+
+  FilterResponse.fromJson(Map<String, dynamic> json) {
+    message = json['message'];
+    if (json['data'] != null) {
+      filter = <Filter>[];
+      json['data'].forEach((v) {
+        filter!.add(Filter.fromJson(v));
+      });
+    }
+  }
+
+  Map<String, dynamic> toJson() {
+    final Map<String, dynamic> data = <String, dynamic>{};
+    data['message'] = message;
+    if (filter != null) {
+      data['data'] = filter!.map((v) => v.toJson()).toList();
+    }
+    return data;
+  }
+}
+
+class Filter {
+  int? filterId;
+  String? title;
+  List<FilterOptionList>? filterOptionList =[];
+  RxBool isShowDotIndicator = false.obs;
+
+  Filter({this.filterId, this.title, this.filterOptionList});
+
+  Filter.fromJson(Map<String, dynamic> json) {
+    try {
+      filterId =
+          json['attr_id'] != null ? int.parse(json['attr_id'] ?? "0") : 0;
+      title = json['attr_label'];
+      if (json['values'] != null) {
+        filterOptionList = <FilterOptionList>[];
+        json['values'].forEach((v) {
+          filterOptionList!.add(FilterOptionList.fromJson(v));
+        });
+      }
+    } catch (e) {
+      filterId = 0;
+      title = "";
+      filterOptionList = [];
+      if (kDebugMode) {
+        print('exception parent $e');
+      }
+    }
+  }
+
+  Map<String, dynamic> toJson() {
+    final Map<String, dynamic> data = <String, dynamic>{};
+    data['attr_label'] = title;
+    if (filterOptionList != null) {
+      data['values'] = filterOptionList!.map((v) => v.toJson()).toList();
+    }
+    return data;
+  }
+}
+
+class FilterOptionList {
+  int? filterOptionId;
+  String? title;
+  RxBool isFilterOptionSelected = false.obs;
+  String? maxPrice;
+  String? minPrice;
+
+  FilterOptionList({this.filterOptionId, this.title});
+
+  FilterOptionList.fromJson(Map<String, dynamic> json) {
+    try {
+      title = json['display'];
+
+      minPrice = json['min_price'] != null ? json['min_price'].toString() : "0";
+      maxPrice = json['max_price'] != null ? json['max_price'].toString() : "1";
+      filterOptionId =
+          json['value'] != null ? int.parse(json['value'] ?? "0") : 0;
+      if (kDebugMode) {
+        print('min and max $minPrice  $maxPrice');
+      }
+    } catch (e) {
+      filterOptionId = 0;
+      minPrice = "0";
+      maxPrice = "0";
+      if (kDebugMode) {
+        print('exception child $e');
+      }
+    }
+  }
+
+  Map<String, dynamic> toJson() {
+    final Map<String, dynamic> data = <String, dynamic>{};
+    data['display'] = title;
+    data['value'] = filterOptionId;
+    return data;
+  }
+}
+
+class FiltersModel {
+  int? filterId;
+  List<int?>? filterOptionIdList = [];
+
+  FiltersModel({this.filterId, this.filterOptionIdList});
+
+
+
+
+  FiltersModel.fromJson(dynamic json) {
+    filterId = json['filter_id'];
+    filterOptionIdList = json['filter_option_id'] != null
+        ? json['filter_option_id'].cast<int>()
+        : [];
+  }
+
+  Map<String, dynamic> toJson() {
+    var map = <String, dynamic>{};
+    map['filter_id'] = filterId;
+    map['filter_option_id'] = filterOptionIdList;
+    return map;
+  }
+}

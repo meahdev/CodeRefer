@@ -1,0 +1,88 @@
+/// functionality
+
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
+import 'package:qaccess/app/common_utils/app_constants.dart';
+import 'package:qaccess/app/common_utils/app_storage_keys.dart';
+
+class LanguageController extends GetxController {
+
+  RxString language = 'English'.obs;
+  RxInt languageCode = AppConstants.english.obs;
+  RxInt selectedLanguage = AppConstants.english.obs; // for select language screen
+  final List<Map<String, dynamic>> locales = [
+    {'name': 'English', 'locale': Locale('en', 'US'), 'language_code': AppConstants.english},
+    {'name': 'العربية', 'locale': Locale('ar', 'QA'), 'language_code': AppConstants.arabic},
+  ];
+
+  @override
+  void onInit() {
+    super.onInit();
+    languageCode.value = GetStorage().read(AppStorageKeys.currentLanguageCode) ?? AppConstants.english;
+    selectedLanguage.value = languageCode.value;
+    setLanguage(languageCode.value);
+  }
+
+  @override
+  void onReady() {
+    super.onReady();
+  }
+
+  @override
+  void onClose() {}
+
+  void setLanguage(int languageCode) {
+    GetStorage().write(AppStorageKeys.currentLanguageCode, languageCode);
+    GetStorage().write(AppStorageKeys.currentLanguage, languageCode == AppConstants.english ? 'English' : 'العربية');
+    this.languageCode.value = languageCode;
+    selectedLanguage.value = languageCode;
+    language.value = languageCode == AppConstants.english ? 'English' : 'العربية';
+    var locale = locales[languageCode]['locale'];
+    Get.updateLocale(locale);
+  }
+}
+
+///Ui
+class LanguageSwitch extends GetView<LanguageController> {
+  const LanguageSwitch({
+    Key? key,
+    required this.onPressed,
+  }) : super(key: key);
+
+  final Function onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() => ToggleSwitch(
+        cornerRadius: 20.0,
+        borderWidth: 1.0,
+        minHeight: 30,
+        minWidth: 90,
+        borderColor: [Colors.grey, Colors.grey],
+        activeBgColor: [AppColor.primaryColor],
+        activeFgColor: Colors.white,
+        inactiveBgColor: Colors.white,
+        inactiveFgColor: AppColor.primaryColor,
+        initialLabelIndex: AppConstants.english,
+        totalSwitches: 2,
+        labels: [
+          controller.languageCode.value == AppConstants.english ? 'English' : 'العربية',
+          controller.languageCode.value == AppConstants.arabic ? 'English' : 'العربية'
+        ],
+        radiusStyle: true,
+        onToggle: (index) {
+          if (index == controller.languageCode.value) {
+            if (controller.languageCode.value == AppConstants.english) {
+              controller.setLanguage(AppConstants.arabic);
+            } else {
+              controller.setLanguage(AppConstants.english);
+            }
+          }
+          else
+            controller.setLanguage(index??0);
+          print(
+              "switched to: $index controller.languageCode value ${controller.languageCode.value}");
+        }));
+  }
+}

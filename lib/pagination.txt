@@ -1,0 +1,33 @@
+///UI
+
+NotificationListener<ScrollNotification>(
+          onNotification: controller.onScrollNotification,
+          child: ListView.builder(
+              padding: EdgeInsets.only(bottom: 70),
+              itemCount: controller.staffList.length,
+              itemBuilder: (context, index) {
+                return Container());)
+
+///Functionality
+
+isLoadingMore : only true when have next page and set to false  other places like api calling section and if the next page is not available
+
+  bool onScrollNotification(ScrollNotification scrollInfo) {
+    if (!isLoadingMore.value && scrollInfo.metrics.pixels == scrollInfo.metrics.maxScrollExtent && page <= _staffPagination!.totalPages!) {
+      page += 1;
+      if (page <= _staffPagination!.totalPages!) {
+        isLoadingMore.value = true;
+        if (isSearching.value) {
+          getStaffListSearch();
+        } else {
+          getStaffList();
+        }
+
+        print('staff_pagination- page ${page} total page ${_staffPagination!.totalPages!} and $isLoadingMore');
+      } else {
+        print('staff_pagination- no more pages');
+        isLoadingMore.value = false;
+      }
+    }
+    return false;
+  }

@@ -1,0 +1,237 @@
+
+
+///UI
+class PaymentWebviewWidget extends StatelessWidget {
+  const PaymentWebviewWidget({
+    Key? key,
+    required this.controller,
+  }) : super(key: key);
+
+  final PaymentTestController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return InAppWebView(
+      key: controller.webViewKey,
+      initialUrlRequest: URLRequest(
+          url: Uri.parse(controller.testUrl),
+          method: 'POST',
+          body: Uint8List.fromList(
+            utf8.encode(""
+                "${controller.requestBody}"),
+          ),
+          headers: {'Content-Type': 'application/x-www-form-urlencoded'}),
+      initialOptions: controller.options,
+      // pullToRefreshController: pullToRefreshController,
+      onWebViewCreated: (webViewController) {
+        // showErrorCustomToast(message: 'Webview created');
+        print('onLoad:::onWebViewCreated...');
+        controller.webViewController = webViewController;
+      },
+      onLoadStart: (webViewController, url) {
+        print('onLoad:::Start... Url: $url');
+        Timer(Duration(seconds: 1), () {
+          controller.webViewLoadingStarted.value = true;
+        });
+        if ("$url".contains(controller.returnUrl)) {
+          Map<String, String> params =
+              url!.queryParameters; // query parameters automatically populated
+
+          //can use returned parameters to encode as json
+          print("params from URL:${jsonEncode(params)}");
+          print("data from URL:${jsonEncode(url.data)}");
+          print("pathSegments from URL:${jsonEncode(url.pathSegments)}");
+          print("pathSegments from URL:${jsonEncode(url.pathSegments)}");
+
+          // var param1 = params['response_message'];
+          // var param2 = params['response_code'];
+          // print("param1: $param1\nparam2: $param2");
+        } else if ("$url".compareTo("https://kube.com.sa/") == 0) {
+          NavigationUtils().callOrderScreen(isQuitCurrentScreen: true);
+        }
+      },
+      androidOnPermissionRequest: (controller, origin, resources) async {
+        return PermissionRequestResponse(
+            resources: resources,
+            action: PermissionRequestResponseAction.GRANT);
+      },
+      shouldOverrideUrlLoading: (controller, navigationAction) async {
+        var uri = navigationAction.request.url!;
+        print(uri);
+
+        return NavigationActionPolicy.ALLOW;
+      },
+      onLoadStop: (controller, url) async {},
+      onLoadError: (controller, url, code, message) {
+        // pullToRefreshController.endRefreshing();
+        print('onLoad:::onLoadError...');
+      },
+      onProgressChanged: (controller, progress) {},
+      onUpdateVisitedHistory: (controller, url, androidIsReload) {
+        print('url: $url');
+      },
+      onConsoleMessage: (controller, consoleMessage) {
+        print('Console Message:${consoleMessage}');
+      },
+    );
+  }
+}
+
+
+/// controller
+
+class PaymentTestController extends GetxController {
+  final GlobalKey webViewKey = GlobalKey();
+
+  // late PullToRefreshController pullToRefreshController;
+  RxBool loading = true.obs;
+  ApiServices apiServices = ApiServices();
+  final count = 0.obs;
+  RxBool webViewLoadingStarted = true.obs;
+  InAppWebViewController? webViewController;
+  InAppWebViewGroupOptions options = InAppWebViewGroupOptions(
+      crossPlatform: InAppWebViewOptions(
+        useShouldOverrideUrlLoading: true,
+        mediaPlaybackRequiresUserGesture: false,
+        transparentBackground: true,
+      ),
+      android: AndroidInAppWebViewOptions(
+        useHybridComposition: true,
+      ),
+      ios: IOSInAppWebViewOptions(
+        allowsInlineMediaPlayback: true,
+      ));
+  String testUrl = "https://sbcheckout.payfort.com/FortAPI/paymentPage";
+  String productionUrl = "https://sbcheckout.payfort.com/FortAPI/paymentPage";
+  String returnUrl = "https://kube.com.sa/Checkout/Payfort";
+  int amount = 0;
+  String from = "";
+  String customerEmail = "";
+
+  ///dev test
+
+  // String command = "PURCHASE";
+  // String accessCode = "1Rk2SkHZWd4K9DtNFRXj";
+  // String merchantIdentifier = "33edc1b4";
+  // String merchantReference = "devu7";
+  // String shaRequestPhase = "937Y8gf98b9r0JzV8b6ZMq{_";
+  // String shaResponsePhase = "71tuCYW9F4zEk7ybGODo3s+\$";
+  // String currency = "SAR";
+  // String language = "en";
+  // String signature = "";
+  // String requestBody = "";
+
+  ///live
+
+  String command = "";
+  String accessCode = "";
+  String merchantIdentifier = "";
+  String merchantReference = "";
+  String shaRequestPhase = "";
+  String shaResponsePhase = "";
+  String currency = "";
+  String language = "";
+  String signature = "";
+  String requestBody = "";
+  PaymentKeyController paymentKeyController = Get.find();
+
+  // String cardNumber = "4005550000000001";
+  // String cardHolderName = "devu";
+  // String expiryDate = "devu";
+
+  @override
+  void onInit() {
+    super.onInit();
+    print(
+        'command == ${paymentKeyController.command} ${paymentKeyController.amount}');
+
+    if (Get.parameters['from'] != null) {
+      from = Get.parameters['from'].toString();
+    }
+    amount = paymentKeyController.amount;
+    customerEmail = paymentKeyController.email;
+    command = paymentKeyController.command;
+    accessCode = paymentKeyController.accessCode;
+    merchantIdentifier = paymentKeyController.merchantIdentifier;
+    merchantReference = paymentKeyController.merchantReference;
+    shaRequestPhase = paymentKeyController.shaRequestPhase;
+    shaResponsePhase = paymentKeyController.shaResponsePhase;
+    currency = paymentKeyController.currency;
+    language = paymentKeyController.language;
+    signature = "";
+    requestBody = "";
+    print(
+        'datat $amount - $customerEmail $merchantIdentifier $merchantReference');
+    generateSignature();
+    requestBody = _requestBodyParameters();
+
+    print('params is $command - $accessCode, -$signature -$requestBody');
+  }
+
+  ///Used in web-view
+  String _requestBodyParameters() {
+    webViewLoadingStarted(true);
+    loading(false);
+    return "access_code=$accessCode"
+        "&"
+        "amount=$amount"
+        "&"
+        "command=$command"
+        "&"
+        "currency=$currency"
+        "&"
+        "customer_email=$customerEmail"
+        "&"
+        "language=$language"
+        "&"
+        "merchant_identifier=$merchantIdentifier"
+        "&"
+        "merchant_reference=$merchantReference"
+        "&"
+        "signature=$signature"
+        "&"
+        "return_url=$returnUrl";
+  }
+
+  ///Parameters sorted in order to create signature
+  String signatureParameters() {
+    return "access_code=$accessCode"
+        "amount=$amount"
+        "command=$command"
+        "currency=$currency"
+        "customer_email=$customerEmail"
+        "language=$language"
+        "merchant_identifier=$merchantIdentifier"
+        "merchant_reference=$merchantReference"
+        "return_url=$returnUrl";
+  }
+
+  ///Used to generate signature for payfort plugin
+  generateSignature() {
+    String requestBody = signatureParameters();
+    // String parameters = requestBody.replaceAll("&", "");
+    print('parameters: $requestBody');
+
+    String requestConcatenatedString =
+        "$shaRequestPhase$requestBody$shaRequestPhase";
+    // requestConcatenatedString = jishasParameters();
+    print('concatenatedString: $requestConcatenatedString');
+
+    // hash the concatenatedString
+    var bytes = utf8.encode(requestConcatenatedString);
+    var digest = sha256.convert(bytes);
+
+    // different formats
+    var bytesDigest = digest.bytes;
+    var hexDigest = digest.toString();
+
+    print('Sha Value');
+    print(hexDigest);
+    signature = hexDigest;
+    print(String.fromCharCodes(bytesDigest));
+    print('signature generation with request phrase completed');
+    requestBody = _requestBodyParameters();
+    // shaSignatureWithResponsePhrase(parameters);
+  }
+}
+
