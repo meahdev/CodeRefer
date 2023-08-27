@@ -1,0 +1,236 @@
+
+ RxList<int> actualIndex = <int>[].obs;
+
+ ///adding -1 value against list length
+ response.data!.productDetailsModel!.productAttributes!
+             .forEach((element) {
+           actualIndex.add(-1);
+         });
+
+ ///UI section
+ class VariantItemListWidget extends StatelessWidget {
+   const VariantItemListWidget(
+       {Key? key,
+       required this.controller,
+       required this.productDetailsModel,
+       required this.attributeIndex})
+       : super(key: key);
+
+   final ProductDetailController controller;
+   final ProductDetailsModel productDetailsModel;
+   /// it's a listview index
+   final int attributeIndex;
+
+   @override
+   Widget build(BuildContext context) {
+     return Wrap(
+       runSpacing: 10,
+       spacing: 10,
+       alignment: WrapAlignment.start,
+       children: productDetailsModel.productAttributes![attributeIndex].valuess!
+           .asMap()
+           .map((index, e) => MapEntry(
+                 index,
+                 Container(
+                   child: Obx(
+                     () => TextButton(
+                       style: ButtonStyle(
+                         backgroundColor: MaterialStateProperty.all(
+                             controller.actualIndex[attributeIndex] == index
+                                 ? AppColor.colorPrimary
+                                 : Colors.white),
+                         elevation: MaterialStateProperty.all(2),
+                         shape:
+                             MaterialStateProperty.all<RoundedRectangleBorder>(
+                           RoundedRectangleBorder(
+                             borderRadius: BorderRadius.circular(50.0),
+                           ),
+                         ),
+                       ),
+                       onPressed: () {
+                         print(
+                             'selected index list before updation: ${controller.actualIndex}');
+                         print('value to store : $index');
+
+                         print('positon to store : $attributeIndex');
+                         if (controller.actualIndex[attributeIndex] == index) {
+                           print('called here... if00');
+                           controller.actualIndex[attributeIndex] = -1;
+
+                         } else {
+                           print('called here... else00');
+                           controller.actualIndex[attributeIndex] = index;
+
+                           int? selectedAttributeId = productDetailsModel
+                               .productAttributes![attributeIndex].id;
+                           int? selectedAttributeValueId = productDetailsModel
+                               .productAttributes![attributeIndex]
+                               .valuess![index]
+                               .id;
+                         }
+                         print(
+                             'selected index list after updation: ${controller.actualIndex}');
+
+                         setAttributeListData(index);
+                       },
+                       child: Text(
+                         productDetailsModel.productAttributes![attributeIndex]
+                             .valuess![index].name!,
+                         textAlign: TextAlign.center,
+                         style: TextStyle(
+                             color:
+                                 controller.actualIndex[attributeIndex] == index
+                                     ? Colors.white
+                                     : Colors.black,
+                             fontSize: 12),
+                       ),
+                     ),
+                   ),
+                 ),
+               ))
+           .values
+           .toList(),
+     );
+   }
+
+   void setAttributeListData(int index) {
+     if (controller.inputModel.attributeList == null) {
+       controller.inputModel.attributeList = [];
+     }
+
+     double attrPrice = productDetailsModel.productAttributes![attributeIndex]
+             .valuess![index].priceAdjustmentValue ??
+         0.0;
+
+     int? indexToRemove;
+     int? indexToUpdate;
+     int? selectedAttributeId =
+         productDetailsModel.productAttributes![attributeIndex].id;
+     int? selectedAttributeValueId = productDetailsModel
+         .productAttributes![attributeIndex].valuess![index].id;
+
+     print(
+         'selected :${productDetailsModel.productAttributes![attributeIndex].valuess![index].name}');
+     print("selectedAttributeId: $selectedAttributeId"
+         "\nselectedAttributeValueId: $selectedAttributeValueId");
+     controller.changeInitialPage(
+         pictureId: productDetailsModel
+                 .productAttributes![attributeIndex].valuess![index].pictureId ??
+             0);
+     print(
+         "selected_attribute_picture_id: ${productDetailsModel.productAttributes![attributeIndex].valuess![index].pictureId}");
+
+     if (controller.inputModel.attributeList!.isEmpty) {
+       // controller.productAttributePrice = attrPrice;
+       controller.inputModel.attributeList!.add(AttributeList(
+           attributeId: selectedAttributeId,
+           attributeValueId: selectedAttributeValueId));
+
+
+       print('called : if');
+     } else {
+       print('Reached here else');
+
+       for (int i = 0; i < controller.inputModel.attributeList!.length; i++) {
+         if (checkWhetherSameObjectValues(
+             i, selectedAttributeId, selectedAttributeValueId)) {
+           indexToRemove = i;
+           break;
+         } else {
+           if (checkWhetherAttributeIdEqual(i, selectedAttributeId) &&
+               !checkWhetherAttributeValueIdEqual(i, selectedAttributeId)) {
+             indexToUpdate = i;
+             break;
+           }
+         }
+       }
+       print("indexToRemove: $indexToRemove\n indexToUpdate: "
+           "$indexToUpdate lineNumber: 124");
+       if (indexToRemove != null) {
+         controller.inputModel.attributeList!.removeAt(indexToRemove);
+
+         // controller.productAttributePrice -= attrPrice;
+         // controller.productPrice(controller.actualProductPrice);
+         // controller.productPrice(controller.priceOnly);
+
+         controller.fetchProductAttributeDetails();
+         print('called : indexToRemove');
+       } else if (indexToUpdate != null) {
+         // double previousAmount = 0.0;
+         // productDetailsModel.productAttributes![attributeIndex].valuess
+         //     ?.forEach((element) {
+         //   if (element.id ==
+         //       controller
+         //           .inputModel.attributeList![indexToUpdate!].attributeValueId) {
+         //     previousAmount = element.priceAdjustmentValue ?? 0.0;
+         //   }
+         // });
+
+         // controller.productAttributePrice -= previousAmount;
+         // controller.productAttributePrice += attrPrice;
+         controller.inputModel.attributeList![indexToUpdate].attributeValueId =
+             selectedAttributeValueId;
+         print('called : indexToUpdate');
+
+         // controller.productAttributePrice += attrPrice;
+       } else {
+         print('called else here...');
+
+         controller.inputModel.attributeList!.add(AttributeList(
+             attributeId: selectedAttributeId,
+             attributeValueId: selectedAttributeValueId));
+
+
+         // controller.productAttributePrice += attrPrice;
+       }
+     }
+     controller.fetchProductAttributeDetails();
+   }
+
+   bool checkWhetherSameObjectValues(
+       int i, int? selectedAttributeId, int? selectedAttributeValueId) {
+     print(
+         "checkWhetherSameObjectValues to remove:${checkWhetherAttributeIdEqual(i, selectedAttributeId) && checkWhetherAttributeValueIdEqual(i, selectedAttributeValueId)}");
+     return checkWhetherAttributeIdEqual(i, selectedAttributeId) &&
+         checkWhetherAttributeValueIdEqual(i, selectedAttributeValueId);
+   }
+
+   bool checkWhetherAttributeValueIdEqual(int i, int? selectedAttributeValueId) {
+     print(
+         "checkWhetherAttributeValueIdEqual(${controller.inputModel.attributeList![i].attributeValueId}==$selectedAttributeValueId):${controller.inputModel.attributeList![i].attributeValueId == selectedAttributeValueId}");
+     return controller.inputModel.attributeList![i].attributeValueId ==
+         selectedAttributeValueId;
+   }
+
+   bool checkWhetherAttributeIdEqual(int i, int? selectedAttributeId) {
+     print(
+         "checkWhetherAttributeIdEqual(${controller.inputModel.attributeList![i].attributeId}==$selectedAttributeId): "
+         "${controller.inputModel.attributeList![i].attributeId == selectedAttributeId}");
+     return controller.inputModel.attributeList![i].attributeId ==
+         selectedAttributeId;
+   }
+
+   LinearGradient unSelectedGradient() {
+     return LinearGradient(
+       begin: Alignment.topLeft,
+       end: Alignment.bottomRight,
+       stops: [0.0, 1.5],
+       colors: [
+         Colors.white,
+         Colors.white,
+       ],
+     );
+   }
+
+   LinearGradient selectedGradient() {
+     return LinearGradient(
+       begin: Alignment.topLeft,
+       end: Alignment.bottomRight,
+       stops: [0.0, 1.5],
+       colors: [
+         AppColor.colorPrimary,
+         AppColor.colorPrimary.withOpacity(0.2),
+       ],
+     );
+   }
+ }
