@@ -1,0 +1,41 @@
+
+
+/// controller class
+String filePath = "";
+String _progressString = "";
+
+///downloading network image and save to directory and share file
+  Future<void> _downloadNetworkImage(String productImageUrl) async {
+    Dio dio = Dio();
+    try {
+      var dir = await getTemporaryDirectory();
+      print(dir);
+
+      if (productImageUrl.isNotEmpty) {
+        await dio.download(
+          productImageUrl,
+          '${dir.path}/image.jpeg',
+          onReceiveProgress: (rec, total) {
+            _progressString = ((rec / total) * 100).toStringAsFixed(0) + "%";
+            if (_progressString == "100%") {
+              isLoading(false);
+              // NextAction();
+              filePath = "${dir.path}/image.jpeg";
+            }
+          },
+        );
+      } else {
+        isLoading(false);
+      }
+    } catch (exp) {
+      isLoading(false);
+    }
+  }
+
+  ///UI
+  onTap share
+   Share.shareFiles(
+              ['${controller.filePath}'],
+              text:
+                  '${LocaleKeys.checkThisOut.tr} \n${controller.productDetailsModel?.name} \n${AppString.BaseUrl}${controller.productDetailsModel?.seName} ${LocaleKeys.onKube.tr}',
+            );

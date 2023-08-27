@@ -1,0 +1,45 @@
+
+/// to know online based on time difference
+bool onlineStatus(DateTime? lastLogin, {String? lastLoginUtc}) {
+  bool isOnline = false;
+ try{
+   final DateTime currentTime = DateTime.now();
+   if (lastLogin != null || lastLoginUtc != null) {
+     if (lastLoginUtc != null) {
+       var utcDate = DateFormat("yyyy-MM-dd HH:mm:ss").parse(lastLoginUtc, true);
+       var dateLocal = utcDate.toLocal();
+       final Duration difference = currentTime.difference(dateLocal);
+       print('$dateLocal -  difference - lastLoginUtc ${difference.inMinutes}');
+       if (difference.inMinutes <= 5) {
+         isOnline = true;
+       }
+     } else if(lastLogin!= null){
+       final Duration difference = currentTime.difference(lastLogin);
+       print('difference - lastLogin ${difference.inMinutes}');
+       if (difference.inMinutes <= 5) {
+         isOnline = true;
+       }
+     }
+   }
+ }catch(e){
+   isOnline =false;
+ }
+  return isOnline;
+}
+
+
+///UTC conversion
+
+String? getTimeZoneBasedConvertedDate(String? date, {String? givenDateFormat, String? conversionDateTimeFormat}) {
+  DateTime dateTime = DateTime.now();
+  print('DateTime=> timeZoneName: ${dateTime.timeZoneName} timeZoneOffset: ${dateTime.timeZoneOffset}');
+  print('DateTime passed=> $date');
+  var dateFormat = DateFormat(givenDateFormat ?? "y-MM-ddTHH:mm:ss"); // you can change the format here
+  var dateFormat2 = DateFormat(conversionDateTimeFormat ?? "hh:mm aa | MMM dd, y"); // you can change the format here
+  var utcDate = dateFormat.format(DateTime.parse(date!)); // pass the UTC time here
+  var localDate = dateFormat.parse(utcDate, true).toLocal().toString();
+  String? convertedDate = dateFormat2.format(DateTime.parse(localDate)); // you will
+  print('DateTime=> $convertedDate');
+
+  return convertedDate;
+}

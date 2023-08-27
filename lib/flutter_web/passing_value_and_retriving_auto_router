@@ -7,4 +7,5 @@ class CareGiverDetailPage extends StatefulWidget {
 
   final String? id;
 
+///retrive
  userId = autoTabRouter?.currentChild?.queryParams.getString('id', '') ?? "";

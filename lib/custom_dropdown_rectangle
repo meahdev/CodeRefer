@@ -1,0 +1,263 @@
+
+*how dropdown works
+can load a list of DropdownMenuItem of dynamic or any list such as string || int or any model class.
+when we need to set initial value we make sure that initial value is existed in the list
+
+
+class CustomDropDown<T> extends StatelessWidget {
+  final InputDecoration? decoration;
+  final List<DropdownMenuItem<T>> items;
+  final T value;
+  final void Function(T?)? onChanged;
+  final String Function(T?)? dropDownValidator;
+  final IconData? icon;
+  final String? label;
+  final String? textFieldHint;
+  final bool isTextFieldWithDropDown;
+  final TextEditingController? textEditingController;
+  final String? Function(String?)? textFieldValidator;
+  final bool isError;
+  final bool readOnly;
+  final List<TextInputFormatter>? inputFormatters;
+
+  const CustomDropDown(
+      {Key? key,
+      this.decoration,
+      required this.items,
+      required this.value,
+      this.onChanged,
+      this.dropDownValidator,
+      this.label,
+      this.icon,
+      this.isTextFieldWithDropDown = false,
+      this.textEditingController,
+      this.textFieldValidator,
+      this.textFieldHint,
+      this.isError = false,
+      this.readOnly = false,
+      this.inputFormatters})
+      : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return isTextFieldWithDropDown
+        ? Container(
+            decoration: BoxDecoration(
+                border: Border.all(color: isError ? errorColor : greyBorder),
+                borderRadius: BorderRadius.circular(12)),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(
+                12,
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: 83,
+                    child: _buildDropdownButtonFormField(),
+                  ),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 5),
+                      child: CTextField(
+                          labelText: textFieldHint,
+                          isShowBorder: false,
+                          readOnly: readOnly,
+                          inputFormatters: inputFormatters,
+                          keyboardType: TextInputType.number,
+                          controller: textEditingController!,
+                          validator: textFieldValidator),
+                    ),
+                  )
+                ],
+              ),
+            ),
+          )
+        : _buildDropdownButtonFormField();
+  }
+
+  _buildDropdownButtonFormField() {
+    return DropdownButtonFormField<T>(
+      decoration: decoration ??
+          InputDecoration(
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+            labelText: label,
+            labelStyle: TS().gPoppins(
+              color: lightBlack,
+            ),
+            border: !isTextFieldWithDropDown
+                ? outlineInputBorder()
+                : InputBorder.none,
+            enabledBorder: !isTextFieldWithDropDown
+                ? outlineInputBorder()
+                : InputBorder.none,
+            focusedBorder: !isTextFieldWithDropDown
+                ? outlineInputBorder()
+                : InputBorder.none,
+          ),
+      value: value,
+      isExpanded: true,
+      icon: Icon(
+        icon ?? CupertinoIcons.chevron_down,
+        size: 18,
+      ),
+      items: items,
+      onChanged: onChanged,
+      validator: dropDownValidator,
+    );
+  }
+
+  OutlineInputBorder outlineInputBorder() {
+    return OutlineInputBorder(
+      borderSide: BorderSide(
+        width: 1.3,
+        color: isError ? errorColor : greyBorder,
+      ),
+      borderRadius: BorderRadius.circular(12),
+    );
+  }
+}
+
+/// custom TextField
+
+
+import 'package:click_for_marry/common/text_styles.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+import '../theme/theme.dart';
+
+class CTextField extends StatelessWidget {
+  const CTextField({
+    Key? key,
+    this.controller,
+    this.margin,
+    this.textInputAction,
+    this.focusNode,
+    this.onChanged,
+    this.obscureText = false,
+    this.onTap,
+    this.onSubmitted,
+    this.keyboardType,
+    this.textCapitalization = TextCapitalization.none,
+    this.suffixIcon,
+    this.validator,
+    this.maxLength,
+    this.textColor,
+    this.height,
+    this.labelText,
+    this.fillColor,
+    this.maxLines,
+    this.minLines,
+    this.textAlignVertical,
+    this.inputFormatters,
+    this.isIgnore = false,
+    this.readOnly = false,
+    this.isShowBorder = true,
+    this.contentPadding,
+    this.initialValue,
+    this.autovalidateMode,
+    this.borderRadius,
+    this.borderColor,
+    this.hint,
+    this.hintColor,
+  }) : super(key: key);
+  final TextEditingController? controller;
+  final EdgeInsetsGeometry? margin;
+  final TextInputAction? textInputAction;
+  final FocusNode? focusNode;
+  final bool? obscureText;
+  final void Function(String)? onChanged;
+  final void Function(String)? onSubmitted;
+  final void Function()? onTap;
+  final TextInputType? keyboardType;
+  final TextCapitalization textCapitalization;
+  final Widget? suffixIcon;
+  final String? Function(String?)? validator;
+  final int? maxLength;
+  final Color? textColor;
+  final double? height;
+  final String? labelText;
+  final Color? fillColor;
+  final int? maxLines;
+  final int? minLines;
+  final TextAlignVertical? textAlignVertical;
+  final List<TextInputFormatter>? inputFormatters;
+  final bool isIgnore;
+  final bool readOnly;
+  final bool isShowBorder;
+  final EdgeInsets? contentPadding;
+  final String? initialValue;
+  final AutovalidateMode? autovalidateMode;
+  final double? borderRadius;
+  final Color? borderColor;
+  final String? hint;
+  final Color? hintColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextFormField(
+      controller: controller,
+      initialValue: initialValue,
+      autovalidateMode: autovalidateMode,
+      textAlignVertical: textAlignVertical ?? TextAlignVertical.center,
+      inputFormatters: inputFormatters ?? [],
+      focusNode: focusNode,
+      textInputAction: textInputAction,
+      obscureText: obscureText!,
+      onChanged: onChanged,
+      onFieldSubmitted: onSubmitted,
+      maxLines: maxLines,
+      minLines: minLines,
+      onTap: onTap,
+      readOnly: readOnly,
+      keyboardType: keyboardType,
+      textCapitalization: textCapitalization,
+      style: TextStyle(fontSize: 15, color: textColor),
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: TextStyle(color: hintColor),
+        labelText: labelText,
+        labelStyle: TS().gPoppins(
+          color: lightBlack,
+        ),
+        contentPadding: contentPadding,
+        counter: const Offstage(),
+        filled: true,
+        fillColor: fillColor ?? Colors.white,
+        suffixIcon: suffixIcon,
+        isDense: true,
+        enabledBorder: isShowBorder ? outlineInputBorder() : InputBorder.none,
+        focusedBorder: isShowBorder ? outlineInputBorder() : InputBorder.none,
+        border: isShowBorder ? outlineInputBorder() : InputBorder.none,
+      ),
+      validator: validator,
+      maxLength: maxLength,
+    );
+  }
+
+  OutlineInputBorder outlineInputBorder() {
+    return OutlineInputBorder(
+      borderSide: BorderSide(
+        width: 1.3,
+        color: borderColor ?? greyBorder,
+      ),
+      borderRadius: BorderRadius.circular(borderRadius ?? 12),
+    );
+  }
+}
+
+
+///UI part
+ CustomDropDown(
+                label: "Contact Person",
+                value: controller.contactPersonCodeSelected,
+                onChanged: (value) => controller.onPersonChange(value, context),
+                items: controller.contactPersonList
+                    .map((e) => DropdownMenuItem(
+                          value: e.id,
+                          child: CustomText(e.name),
+                        ))
+                    .toList()),

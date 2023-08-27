@@ -1,0 +1,98 @@
+/// model class
+class BrandList {
+  List<BrandItem>? brandListItem;
+
+  BrandList({this.brandListItem});
+
+  BrandList.fromJson(Map<String, dynamic> json) {
+    if (json['brand_list'] != null) {
+      brandListItem = <BrandItem>[];
+      json['brand_list'].forEach((v) {
+        brandListItem?.add(BrandItem.fromJson(v));
+      });
+    }
+  }
+
+  Map<String, dynamic> toJson() {
+    final data = <String, dynamic>{};
+    if (brandListItem != null) {
+      data['brand_list'] = brandListItem?.map((v) => v.toJson()).toList();
+    }
+    return data;
+  }
+}
+
+
+///api client class
+@GET("/api-frontend/Catalog/ManufacturerAll")
+  Future<dynamic> brandList();
+
+
+/// conversion
+
+Future<BaseModel<BrandList>> brandList() async {
+    BrandList response;
+    try {
+      dynamic res = await client.brandList();
+      // print(jsonEncode(res));
+      var string = "{\"brand_list\": ${jsonEncode(res)}}";
+      response = BrandList.fromJson(json.decode(string));
+      print('brand_list: ${response.toJson()}');
+    } catch (error, stacktrace) {
+      print(stacktrace);
+      return BaseModel()
+        ..setException(ServerError.withErrorAndCode(error: error as DioError));
+    }
+    return BaseModel()..data = response;
+  }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
