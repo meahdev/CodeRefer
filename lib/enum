@@ -1,0 +1,11 @@
+
+
+enum Interview {
+  started(1),
+  failed(2),
+  completed(3);
+
+  final int val;
+
+  const Interview(this.val);
+}

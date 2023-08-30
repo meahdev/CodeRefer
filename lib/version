@@ -1,0 +1,41 @@
+
+
+ int versionStatus = compareVersionNames(
+              versionNumber,
+              settingResponse!.result!.appVersion!.customerIosVersion
+                  .toString());
+
+  int compareVersionNames(String oldVersionName, String newVersionName) {
+    int res = 0;
+    List<String> oldNumbers = [];
+    List<String> newNumbers = [];
+
+    oldNumbers = oldVersionName.split(".");
+    newNumbers = newVersionName.split(".");
+
+    print(oldNumbers);
+    print(newNumbers);
+
+    // To avoid IndexOutOfBounds
+    int maxIndex = math.min(oldNumbers.length, newNumbers.length);
+
+    for (int i = 0; i < maxIndex; i++) {
+      int oldVersionPart = int.parse(oldNumbers[i]);
+      int newVersionPart = int.parse(newNumbers[i]);
+
+      if (oldVersionPart < newVersionPart) {
+        res = -1;
+        break;
+      } else if (oldVersionPart > newVersionPart) {
+        res = 1;
+        break;
+      }
+    }
+
+    // If versions are the same so far, but they have different length...
+    if (res == 0 && oldNumbers.length != newNumbers.length) {
+      res = (oldNumbers.length > newNumbers.length) ? 1 : -1;
+    }
+
+    return res;
+  }

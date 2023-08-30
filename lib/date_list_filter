@@ -1,0 +1,11 @@
+
+ searchWithFilterData(DateTime? fromDate, DateTime? toDate, String search) {
+    print('Received date $fromDate and $toDate and $search ');
+    mFilteredHolidayList.value = mHolidayList.where((u) {
+      return (fromDate!.isAtSameMomentAs(u.convertedDate!) ||
+              toDate!.isAtSameMomentAs(u.convertedDate!) ||
+              fromDate.isBefore(u.convertedDate!) &&
+                  toDate.isAfter(u.convertedDate!)) &&
+          (u.title!.toLowerCase().contains(search.toLowerCase()));
+    }).toList();
+  }
